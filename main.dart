@@ -2,9 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
-import 'package:permission_handler/permission_handler.dart';
 
 void main() => runApp(const MyApp());
 
@@ -22,7 +20,7 @@ class MyApp extends StatelessWidget {
 }
 
 class ScanScreen extends StatefulWidget {
-  const ScanScreen({Key? key, required this.title}) : super(key: key);
+  const ScanScreen({super.key, required this.title});
 
   final String title;
 
@@ -40,12 +38,8 @@ class _ScanScreenState extends State<ScanScreen> {
   BluetoothCharacteristic? gestureCharacteristic;
 
   @override
-  Future<void> initState() async {
+  void initState() {
     super.initState();
-    if (await FlutterBluePlus.isSupported == false) {
-      // output log to show that bluetooth is not supported
-      return;
-    }
 
     setState(() {
       currentGesture = "Scanning...";
@@ -55,6 +49,11 @@ class _ScanScreenState extends State<ScanScreen> {
   }
 
   void scanForDevice() async {
+    if (await FlutterBluePlus.isSupported == false) {
+      // output log to show that bluetooth is not supported
+      return;
+    }
+
     if (await FlutterBluePlus.adapterState.first != BluetoothAdapterState.on) {
       // log bluetooth is off and for user to turn it on
       if (!Platform.isAndroid) {
