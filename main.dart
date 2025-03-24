@@ -1,189 +1,230 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_blue/flutter_blue.dart';
-import 'package:path_provider/path_provider.dart';
 
 void main() {
   runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Arduino BLE & CSV Logger',
+      title: 'Arduino BLE Movement Classifier',
       theme: ThemeData(
         primarySwatch: Colors.blue,
+        useMaterial3: true,
       ),
-      home: HomePage(),
+      home: const ScanScreen(),
     );
   }
 }
 
-class HomePage extends StatefulWidget {
+class ScanScreen extends StatefulWidget {
+  const ScanScreen({super.key});
+
   @override
-  _HomePageState createState() => _HomePageState();
+  State<ScanScreen> createState() => _ScanScreenState();
 }
 
-class _HomePageState extends State<HomePage> {
-  // BLE-related variables
+class _ScanScreenState extends State<ScanScreen> {
   final FlutterBlue flutterBlue = FlutterBlue.instance;
+  bool isScanning = false;
+  bool deviceFound = false;
+  String currentGesture = "Unknown";
+
+
+  // BluetoothCharacteristic? targetCharacteristic;
+
+  final String serviceUUID = "19B10000-E8F2-537E-4F6C-D104768A1214";
+  final String characteristicUUID = "19B10001-E8F2-537E-4F6C-D104768A1215";
+  // final String confidenceCharacteristicUuid = "19B10001-E8F2-537E-4F6C-D104768A1216";
+  final String targetDeviceName = "IMUClassifier";
+
+  StreamSubscription<List<ScanResult>>? scanSubscription;
+  StreamSubscription<List<int>>? characteristicSubscription;
   BluetoothDevice? targetDevice;
-  BluetoothCharacteristic? targetCharacteristic;
-  String currentState = "Unknown";
-
-  // CSV Logging variables
-  File? logFile;
-  final String csvFilename = "running.csv";
-
-
-  final String serviceUUID = "19B10010-E8F2-537E-4F6C-D104768A1214";
-  final String characteristicUUID = "19B10011-E8F2-537E-4F6C-D104768A1214";
-  final String targetDeviceName = "Arduino Nano BLE 33";
 
   @override
   void initState() {
     super.initState();
-    initCSVFile();
-    scanForDevice();
-  }
-
-  /// Initializes the CSV log file in the device's documents directory.
-  Future<void> initCSVFile() async {
-    Directory directory = await getApplicationDocumentsDirectory();
-    String path = directory.path;
-    logFile = File('$path/$csvFilename');
-    if (!await logFile!.exists()) {
-      await logFile!.create(recursive: true);
-      // Optionally, write a header row
-      await logFile!.writeAsString("timestamp,state,raw_data\n", mode: FileMode.write);
-    }
-  }
-
-  /// Scans for the target BLE device.
-  void scanForDevice() {
-    flutterBlue.scan(timeout: Duration(seconds: 4)).listen((scanResult) {
-      if (scanResult.device.name == targetDeviceName) {
-        flutterBlue.stopScan();
-        targetDevice = scanResult.device;
-        connectToDevice();
-      }
-    });
-  }
-
-  /// Connects to the target device.
-  Future<void> connectToDevice() async {
-    if (targetDevice == null) return;
-    await targetDevice!.connect();
-    discoverServices();
-  }
-
-  /// Discovers services and characteristics.
-  Future<void> discoverServices() async {
-    if (targetDevice == null) return;
-    List<BluetoothService> services = await targetDevice!.discoverServices();
-    for (BluetoothService service in services) {
-      if (service.uuid.toString() == serviceUUID) {
-        for (BluetoothCharacteristic characteristic in service.characteristics) {
-          if (characteristic.uuid.toString() == characteristicUUID) {
-            targetCharacteristic = characteristic;
-            subscribeToCharacteristic();
-            return;
-          }
-        }
-      }
-    }
-  }
-
-  /// Subscribes to the characteristic to receive data and logs each packet.
-  void subscribeToCharacteristic() async {
-    if (targetCharacteristic == null) return;
-    await targetCharacteristic!.setNotifyValue(true);
-    targetCharacteristic!.value.listen((value) {
-      if (value.isNotEmpty) {
-        // Decode the incoming BLE data into a string.
-        String csvRow = utf8.decode(value).trim();
-        List<String> parts = csvRow.split(',');
-        int stateCode = -1;
-        if (parts.isNotEmpty) {
-          stateCode = int.tryParse(parts[0]) ?? -1;
-        }
-        // Update UI based on state code.
+    flutterBlue.state.listen((state) {
+      if (state != BluetoothState.on) {
         setState(() {
-          switch (stateCode) {
-            case 0:
-              currentState = "Idle";
-              break;
-            case 1:
-              currentState = "Walking";
-              break;
-            case 2:
-              currentState = "Running";
-              break;
-            default:
-              currentState = "Unknown";
-          }
+          deviceFound = false;
+          currentGesture = "Bluetooth is off";
         });
-
-        // Prepare and append a CSV log entry with a timestamp.
-        String timestamp = DateTime.now().toIso8601String();
-        String logEntry = "$timestamp,$csvRow\n";
-        if (logFile != null) {
-          logFile!.writeAsString(logEntry, mode: FileMode.append).catchError((error) {
-            print("Error writing to CSV: $error");
-          });
-        }
       }
     });
   }
 
   @override
   void dispose() {
-    if (targetDevice != null) {
-      targetDevice!.disconnect();
-    }
+    scanSubscription?.cancel();
+    characteristicSubscription?.cancel();
+    // if (targetDevice != null) {
+    //   targetDevice!.disconnect();
+    // }
     super.dispose();
+  }
+
+  /// Scans for the target BLE device.
+  void scanForDevice() async {
+    if (isScanning) return;
+
+    BluetoothState bluetoothState = await flutterBlue.state.first;
+    if (bluetoothState != BluetoothState.on) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please turn on Bluetooth')),
+      );
+      return;
+    }
+
+    setState(() {
+      isScanning = true;
+      deviceFound = false;
+      currentGesture = "Scanning...";
+    });
+
+    flutterBlue.startScan(timeout: const Duration(seconds: 10));
+    
+    scanSubscription = flutterBlue.scanResults.listen((results) {
+      for (ScanResult result in results) {
+        String scanName = result.device.name;
+        if (scanName.contains('Arduino') || scanName.contains('IMUClassifier') ||
+            result.advertisementData.serviceUuids.contains(Guid(serviceUUID))) {
+          connectToDevice(result.device);
+          break;
+        }
+      }
+    }, onDone: () {
+      setState(() {
+        isScanning = false;
+        if (!deviceFound) {
+          currentGesture = "No device found";
+        }
+      });
+    });
+
+    Future.delayed(const Duration(seconds: 10), () {
+      flutterBlue.stopScan();
+    });
+
+    // flutterBlue.scan(timeout: Duration(seconds: 4)).listen((scanResult) {
+    //   if (scanResult.device.name == targetDeviceName || scanResult.device.name == "Arduino") {
+    //     flutterBlue.stopScan();
+    //     targetDevice = scanResult.device;
+    //     connectToDevice();
+    //   }
+    // });
+  }
+
+  /// Connects to the target device.
+  Future<void> connectToDevice(BluetoothDevice device) async {
+    flutterBlue.stopScan();
+    scanSubscription?.cancel();
+
+    setState(() {
+      targetDevice = device;
+      currentGesture = "Connecting...";
+    });
+
+    try {
+      await device.connect();
+
+      List<BluetoothService> services = await device.discoverServices();
+
+      for (BluetoothService service in services) {
+        if (service.uuid.toString() == serviceUUID) {
+          for (BluetoothCharacteristic characteristic in service.characteristics) {
+            if (characteristic.uuid.toString() == characteristicUUID) {
+              await characteristic.setNotifyValue(true);
+              characteristicSubscription = characteristic.value.listen((value) {
+                if (value.isNotEmpty) {
+                  setState(() {
+                    currentGesture = utf8.decode(value).trim();
+                    deviceFound = true;
+                  });
+                }
+              });
+
+              setState(() {
+                deviceFound = true;
+                isScanning = false;
+              });
+
+              return;
+            }
+          }
+        }
+      }
+
+      setState(() {
+        currentGesture = "Gesture characteristic not found";
+        isScanning = false;
+      });
+    } catch (e) {
+      setState(() {
+        currentGesture = "Connection failed: ${e.toString()}";
+        isScanning = false;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Arduino BLE & CSV Logger'),
+        title: Text('Arduino BLE Movement Classifier'),
+        actions: [
+          if (deviceFound)
+            IconButton(
+              icon: const Icon(Icons.bluetooth_disabled),
+              onPressed: () async {
+                characteristicSubscription?.cancel();
+                await targetDevice?.disconnect();
+                setState(() {
+                  deviceFound = false;
+                  currentGesture = "Disconnected";
+                });
+              }
+            ),
+        ],
       ),
+
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Text('Current State:', style: TextStyle(fontSize: 24)),
-            SizedBox(height: 20),
-            Text(
-              currentState,
-              style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+        child: deviceFound
+            ? Text(
+              currentGesture, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              )
+            : ElevatedButton(
+              onPressed: isScanning ? null : scanForDevice,
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16)
+              ),
+              child: isScanning
+                ? const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                      SizedBox(width: 12),
+                      Text("Scanning..."),
+                    ],
+                  )
+                : const Text(
+                    "Scan",
+                    style: TextStyle(fontSize: 20),
+                  ),
             ),
-            SizedBox(height: 40),
-            // Display the CSV log file path.
-            FutureBuilder<String>(
-              future: getCSVFilePath(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.done && snapshot.hasData) {
-                  return Text('CSV Log File:\n${snapshot.data}', textAlign: TextAlign.center);
-                }
-                return CircularProgressIndicator();
-              },
-            ),
-          ],
-        ),
       ),
     );
   }
-
-  Future<String> getCSVFilePath() async {
-    Directory directory = await getApplicationDocumentsDirectory();
-    return '${directory.path}/$csvFilename';
-  }
 }
-
