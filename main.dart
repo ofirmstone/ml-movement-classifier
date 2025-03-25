@@ -102,7 +102,7 @@ class _ScanScreenState extends State<ScanScreen> {
     });
 
     try {
-      await device.connect(autoConnect: true);
+      await device.connect();
 
       discoverServices(device);
 
