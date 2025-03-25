@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 void main() => runApp(const MyApp());
 
@@ -51,15 +52,30 @@ class _ScanScreenState extends State<ScanScreen> {
   void scanForDevice() async {
     if (await FlutterBluePlus.isSupported == false) {
       // output log to show that bluetooth is not supported
+      setState(() {
+        currentGesture = "Device does not support bluetooth";
+      });
+      return;
+    }
+
+    var bluetoothStatus = await Permission.bluetooth.request();
+    var locationStatus = await Permission.location.request();
+
+    if (!bluetoothStatus.isGranted || !locationStatus.isGranted) {
+      setState(() {
+        currentGesture = "Bluetooth or Location permissions denied";
+      });
       return;
     }
 
     if (await FlutterBluePlus.adapterState.first != BluetoothAdapterState.on) {
-      // log bluetooth is off and for user to turn it on
-      if (!Platform.isAndroid) {
-        return;
+      try {
+        await FlutterBluePlus.turnOn(); // request the user to turn on Bluetooth
+      } catch (e) {
+        setState(() {
+          currentGesture = "Bluetooth request failed: ${e.toString()}";
+        });
       }
-      await FlutterBluePlus.turnOn(); // request the user to turn on Bluetooth
     }
 
     FlutterBluePlus.startScan(
@@ -122,7 +138,7 @@ class _ScanScreenState extends State<ScanScreen> {
     }
 
     setState(() {
-      currentGesture = "Gesture characteristic not found (failed)";
+      currentGesture = "Gesture characteristic not found";
     });
   }
 
@@ -154,13 +170,14 @@ class _ScanScreenState extends State<ScanScreen> {
                   ? Colors.blue
                   : currentGesture == "Connecting..."
                   ? Colors.orange
-                  : currentGesture.contains("failed")
+                  : ["failed", "denied", "not", "off"].any((word) => currentGesture.contains(word))
                   ? Colors.red
                   : Colors.green,
             ),
             textAlign: TextAlign.center,
           ),
-          if (currentGesture.contains("failed"))
+
+          if (["failed", "denied", "not", "off"].any((word) => currentGesture.contains(word)))
             Padding(
               padding: const EdgeInsets.only(top: 16.0),
               child: ElevatedButton(
