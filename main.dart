@@ -59,14 +59,25 @@ class _ScanScreenState extends State<ScanScreen> {
     }
 
     var bluetoothStatus = await Permission.bluetooth.request();
-    var locationStatus = await Permission.location.request();
 
-    if (!bluetoothStatus.isGranted || !locationStatus.isGranted) {
-      setState(() {
-        currentGesture = "Bluetooth or Location permissions denied";
-      });
-      return;
+    if (Platform.isAndroid) {
+      var locationStatus = await Permission.location.request();
+
+      if (!bluetoothStatus.isGranted || !locationStatus.isGranted) {
+        setState(() {
+          currentGesture = "Bluetooth or Location permissions denied";
+        });
+        return;
+      }
+    } else if (Platform.isIOS) {
+      if (!bluetoothStatus.isGranted) {
+        setState(() {
+          currentGesture = "Bluetooth permissions denied";
+        });
+        return;
+      }
     }
+
 
     if (await FlutterBluePlus.adapterState.first != BluetoothAdapterState.on) {
       try {
@@ -154,8 +165,10 @@ class _ScanScreenState extends State<ScanScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
+    backgroundColor: Color.fromRGBO(32, 32, 28, 1),
     appBar: AppBar(
-      title: Text(widget.title),
+      backgroundColor: Color.fromRGBO(32, 32, 28, 1),
+      title: Text(widget.title, style: TextStyle(color: Colors.white)),
     ),
     body: Center(
       child: Column(
