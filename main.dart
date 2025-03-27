@@ -12,11 +12,11 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => MaterialApp(
-    title: 'Arduino IMU Movement Classifier',
+    title: 'FitTrack',
     theme: ThemeData(
       primarySwatch: Colors.blue,
     ),
-    home: const ScanScreen(title: 'Arduino IMU Movement Classifier'),
+    home: const ScanScreen(title: 'FitTrack'),
   );
 }
 
@@ -34,6 +34,8 @@ class _ScanScreenState extends State<ScanScreen> {
   final serviceUUID = Guid("19B10000-E8F2-537E-4F6C-D104768A1214");
   final characteristicUUID = Guid("19B10001-E8F2-537E-4F6C-D104768A1215");
   final List<String> targetDeviceName = ["IMUClassifier", "Arduino"];
+
+  String confirmedDeviceName = "";
 
   BluetoothDevice? targetDevice;
   BluetoothCharacteristic? gestureCharacteristic;
@@ -111,6 +113,7 @@ class _ScanScreenState extends State<ScanScreen> {
 
     setState(() {
       currentGesture = "Connecting...";
+      confirmedDeviceName = device.platformName;
     });
 
     try {
@@ -166,64 +169,82 @@ class _ScanScreenState extends State<ScanScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    backgroundColor: Color.fromRGBO(32, 32, 28, 1),
+    backgroundColor: Color.fromRGBO(10, 10, 8, 1),
     appBar: AppBar(
-      backgroundColor: Color.fromRGBO(32, 32, 28, 1),
-      title: Text(widget.title, style: TextStyle(color: Colors.red)),
+      backgroundColor: Color.fromRGBO(10, 10, 8, 1),
+      title: Text(widget.title, style: TextStyle(color: Colors.white)),
     ),
     body: Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            color: Color.fromRGBO(1, 1, 1, 1),
-            padding: EdgeInsets.all(20),
-            decoration: BoxDecoration(
+          if (confirmedDeviceName.isNotEmpty)
+            Padding(
+              padding: EdgeInsets.only(bottom: 32),
+              child: Text(
+                "Connected to: \n$confirmedDeviceName",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w600,
+                )
+              )
+            ),
+
+          SizedBox(
+            width: 260,
+            child: Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Color.fromRGBO(32, 32, 28, 1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  children: [
+                    Icon(
+                      currentGesture == "Scanning..."
+                          ? Icons.bluetooth_searching
+                          : currentGesture == "Connecting..."
+                          ? Icons.bluetooth_connected
+                          :  ["failed", "denied", "not", "off"].any((word) => currentGesture.contains(word))
+                          ? Icons.bluetooth_disabled
+                          : currentGesture == "Walking"
+                          ? Icons.directions_walk
+                          : currentGesture == "Running"
+                          ? Icons.directions_run
+                          : Icons.accessibility_new,
+                      size: 128,
+                      color: currentGesture == "Scanning..."
+                          ? Colors.blue
+                          : currentGesture == "Connecting..."
+                          ? Colors.orange
+                          : ["failed", "denied", "not", "off"].any((word) => currentGesture.contains(word))
+                          ? Colors.red
+                          : Colors.green,
+                    ),
+                    SizedBox(height: 16),
+                    Text(
+                      currentGesture,
+                      style: TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                        color: currentGesture == "Scanning..."
+                            ? Colors.blue
+                            : currentGesture == "Connecting..."
+                            ? Colors.orange
+                            : ["failed", "denied", "not", "off"].any((word) => currentGesture.contains(word))
+                            ? Colors.red
+                            : Colors.green,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                )
 
             ),
-            child: Column(
-              children: [
-                Icon(
-                  currentGesture == "Scanning..."
-                      ? Icons.bluetooth_searching
-                      : currentGesture == "Connecting..."
-                      ? Icons.bluetooth_connected
-                      :  ["failed", "denied", "not", "off"].any((word) => currentGesture.contains(word))
-                      ? Icons.bluetooth_disabled
-                      : currentGesture == "Walking"
-                      ? Icons.directions_walk
-                      : currentGesture == "Running"
-                      ? Icons.directions_run
-                      : Icons.accessibility_new,
-                  size: 64,
-                  color: currentGesture == "Scanning..."
-                      ? Colors.blue
-                      : currentGesture == "Connecting..."
-                      ? Colors.orange
-                      : ["failed", "denied", "not", "off"].any((word) => currentGesture.contains(word))
-                      ? Colors.red
-                      : Colors.green,
-                ),
-                SizedBox(height: 16),
-                Text(
-                  currentGesture,
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: currentGesture == "Scanning..."
-                        ? Colors.blue
-                        : currentGesture == "Connecting..."
-                        ? Colors.orange
-                        : ["failed", "denied", "not", "off"].any((word) => currentGesture.contains(word))
-                        ? Colors.red
-                        : Colors.green,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            )
-
           ),
+
+          SizedBox(height: 200,),
 
           if (["failed", "denied", "not", "off"].any((word) => currentGesture.contains(word)))
             Padding(
