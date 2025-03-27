@@ -58,11 +58,11 @@ const char* GESTURES[] = {
 // BLE service and characteristic definitions
 const char * serviceUuid = "19b10000-e8f2-537e-4f6c-d104768a1214";
 const char * serviceGestureCharacteristic = "19B10001-E8F2-537E-4F6C-D104768A1215";
-const char * serviceConfidenceCharacteristic = "19B10001-E8F2-537E-4F6C-D104768A1216";
+// const char * serviceConfidenceCharacteristic = "19B10001-E8F2-537E-4F6C-D104768A1216";
 
 BLEService imuService(serviceUuid);
 BLEStringCharacteristic gestureCharacteristic(serviceGestureCharacteristic, BLERead | BLENotify, 10);
-BLEFloatCharacteristic confidenceCharacteristic(serviceConfidenceCharacteristic, BLERead | BLENotify);
+// BLEFloatCharacteristic confidenceCharacteristic(serviceConfidenceCharacteristic, BLERead | BLENotify);
 
 
 void setup() {
@@ -79,11 +79,11 @@ void setup() {
 
   BLE.setAdvertisedService(imuService);
   imuService.addCharacteristic(gestureCharacteristic);
-  imuService.addCharacteristic(confidenceCharacteristic);
+  // imuService.addCharacteristic(confidenceCharacteristic);
   BLE.addService(imuService);
 
   gestureCharacteristic.writeValue("Unknown");
-  confidenceCharacteristic.writeValue(0.0);
+  // confidenceCharacteristic.writeValue(0.0);
   BLE.advertise();
 
   Serial.println("Scanning started");
@@ -134,7 +134,8 @@ void loop() {
 
     while (central.connected()) {
 
-      float aX, aY, aZ, confidence, maxConfidence;
+      float aX, aY, aZ, confidence;
+      float maxConfidence = 0.0;
       int maxIndex;
 
       if (samplesRead < numSamples) {
@@ -157,7 +158,7 @@ void loop() {
         TfLiteStatus invokeStatus = tflInterpreter->Invoke();
         if (invokeStatus != kTfLiteOk) {
           Serial.println("Invoke failed!");
-          while (1);
+          while (1);o
           return;
         }
 
@@ -168,7 +169,19 @@ void loop() {
           Serial.print(GESTURES[i]);
           Serial.print(": ");
           Serial.println(confidence, 6);
+
+          if (confidence > maxConfidence) {
+            maxConfidence = confidence;
+            maxIndex = i;
+          }
         }
+
+        Serial.print("Current gesture: ");
+        Serial.print(GESTURES[maxIndex]);
+        Serial.print(" with a confidence of ");
+        Serial.println(maxConfidence, 6);
+
+        gestureCharacteristic.writeValue(GESTURES[maxIndex]);
 
         // Clean up the data buffer before filling up for the next batch.
         int i = 0;
