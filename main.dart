@@ -69,14 +69,15 @@ class _ScanScreenState extends State<ScanScreen> {
         });
         return;
       }
-    } else if (Platform.isIOS) {
-      if (!bluetoothStatus.isGranted) {
-        setState(() {
-          currentGesture = "Bluetooth permissions denied";
-        });
-        return;
-      }
     }
+    // else if (Platform.isIOS) {
+    //   if (!bluetoothStatus.isGranted) {
+    //     setState(() {
+    //       currentGesture = "Bluetooth permissions denied";
+    //     });
+    //     return;
+    //   }
+    // }
 
 
     if (await FlutterBluePlus.adapterState.first != BluetoothAdapterState.on) {
@@ -168,26 +169,60 @@ class _ScanScreenState extends State<ScanScreen> {
     backgroundColor: Color.fromRGBO(32, 32, 28, 1),
     appBar: AppBar(
       backgroundColor: Color.fromRGBO(32, 32, 28, 1),
-      title: Text(widget.title, style: TextStyle(color: Colors.white)),
+      title: Text(widget.title, style: TextStyle(color: Colors.red)),
     ),
     body: Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(
-            currentGesture,
-            style: TextStyle(
-              fontSize: 32,
-              fontWeight: FontWeight.bold,
-              color: currentGesture == "Scanning..."
-                  ? Colors.blue
-                  : currentGesture == "Connecting..."
-                  ? Colors.orange
-                  : ["failed", "denied", "not", "off"].any((word) => currentGesture.contains(word))
-                  ? Colors.red
-                  : Colors.green,
+          Container(
+            color: Color.fromRGBO(1, 1, 1, 1),
+            padding: EdgeInsets.all(20),
+            decoration: BoxDecoration(
+
             ),
-            textAlign: TextAlign.center,
+            child: Column(
+              children: [
+                Icon(
+                  currentGesture == "Scanning..."
+                      ? Icons.bluetooth_searching
+                      : currentGesture == "Connecting..."
+                      ? Icons.bluetooth_connected
+                      :  ["failed", "denied", "not", "off"].any((word) => currentGesture.contains(word))
+                      ? Icons.bluetooth_disabled
+                      : currentGesture == "Walking"
+                      ? Icons.directions_walk
+                      : currentGesture == "Running"
+                      ? Icons.directions_run
+                      : Icons.accessibility_new,
+                  size: 64,
+                  color: currentGesture == "Scanning..."
+                      ? Colors.blue
+                      : currentGesture == "Connecting..."
+                      ? Colors.orange
+                      : ["failed", "denied", "not", "off"].any((word) => currentGesture.contains(word))
+                      ? Colors.red
+                      : Colors.green,
+                ),
+                SizedBox(height: 16),
+                Text(
+                  currentGesture,
+                  style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: currentGesture == "Scanning..."
+                        ? Colors.blue
+                        : currentGesture == "Connecting..."
+                        ? Colors.orange
+                        : ["failed", "denied", "not", "off"].any((word) => currentGesture.contains(word))
+                        ? Colors.red
+                        : Colors.green,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            )
+
           ),
 
           if (["failed", "denied", "not", "off"].any((word) => currentGesture.contains(word)))
