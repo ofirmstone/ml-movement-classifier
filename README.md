@@ -10,6 +10,11 @@ In this project, we have collated datasets for the 3 movement types: idle, walki
 
 This meant that any new data from the accelerometer could be classified and communicated to the phone using Bluetooth Low Energy (BLE) in real-time. We developed a Flutter app (**main.dart** and **pubspec.yaml**) to display this classification from the Arduino.
 
+### Prototype functioning in early test:
+
+https://github.com/user-attachments/assets/4be26ba9-1a9a-4b1a-a314-8687633debb2
+
+
 # Further Solo Development
 ### FitTrack - using movement classification and heart rate data to assist athlete load management
 
