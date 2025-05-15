@@ -4,7 +4,7 @@
   
 <em>Using an Arduino Nano 33 BLE and TinyML to classify movement to a mobile phone in real-time</em>
 
-<img src="https://img.shields.io/github/license/ofirmstone/ml-movement-classifier?logo=opensourceinitiative&logoColor=white&color=blue" alt="license">
+<img src="https://img.shields.io/github/license/ofirmstone/ml-movement-classifier?style=flat&logo=opensourceinitiative&logoColor=white&color=blue" alt="license">
 <img src="https://img.shields.io/github/last-commit/ofirmstone/ml-movement-classifier?style=flat&logo=git&logoColor=white&color=blue" alt="last-commit">
 <img src="https://img.shields.io/github/languages/top/ofirmstone/ml-movement-classifier?style=flat&color=blue" alt="repo-top-language">
 <img src="https://img.shields.io/github/languages/count/ofirmstone/ml-movement-classifier?style=flat&color=blue" alt="repo-language-count">
