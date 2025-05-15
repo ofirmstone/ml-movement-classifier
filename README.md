@@ -46,3 +46,9 @@ After research into the evolution of athlete load monitoring, and the current mu
 
 My solution is a wearable IoT system connected to a smartphone application, allowing multiple players (a full team) to be tracked simultaneously to aid coaches' abilities to assess when certain players require a break by providing statistical data rather than relying on observational judgement and communication. This solution would utilize a **heart rate sensor** in tandem with our Arduino.
 
+## Acknowledgments
+
+**Team 9:** <a href="https://github.com/ofirmstone" target="_blank" style="">Oliver Firmstone</a>, 
+<a href="https://github.com/sam-lawal" target="_blank">Samuel Lawal</a>, 
+Saleban Abdi, Fareedah Bello
+
